@@ -172,7 +172,7 @@ public class LLRBTree <K extends Comparable<K>, V>{
     /** Where our main events happened. */
 		else {
       /** Rotate the left red node to the right so that we can get a spindle-like tree, 
-      which reduce our work when deleting items and can be balanced by recursively rotateRight. */
+      which reduce our work when deleting items and can be balanced by recursively rotateLeft. */
 			if(isRed(n.left)) {
 				n = rotateRight(n);
 			}
