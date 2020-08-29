@@ -1,0 +1,226 @@
+public class LLRBTree <K extends Comparable<K>, V>{
+	private Node root;
+	public class Node{
+		private boolean redish;
+		private K key;
+		private V value;
+		private Node left;
+		private Node right;
+		public Node(K key, V value, boolean redish) {
+			this.redish = redish;
+			this.key = key;
+			this.value = value;
+		}
+	}
+	public LLRBTree() {
+		root = null;
+	}
+	public K min() {
+		return min(root).key;
+	}
+	private boolean isEmpty() {
+		return root == null;
+	}
+	private Node min(Node n) {
+		assert(n != null);
+		if(n.left == null) {
+			return n;
+		}
+		else {
+			return min(n.left);
+		}
+	}
+	private boolean isRed(Node n) {
+		if(n == null) {
+			return false;
+		}
+		return n.redish == true;
+	}
+	private Node rotateLeft(Node n) {
+		Node x = n.right;
+		n.right = x.left;
+		x.left = n;
+		x.redish = x.left.redish;
+		x.left.redish = true;
+		return x;
+	}
+	private Node rotateRight(Node n) {
+		Node x = n.left;
+		n.left = x.right;
+		x.right = n;
+		x.redish = x.right.redish;
+		x.right.redish = true;
+		return x;
+	}
+	private Node flip(Node n) {
+		n.redish = !n.redish;
+		n.left.redish = !n.left.redish;
+		n.right.redish = !n.right.redish;
+		return n;
+	}
+	public boolean contains(K key) {
+		return get(key) != null;
+	}
+	public V get(K key) {
+		return get(root, key);
+	}
+	private V get(Node n, K key) {
+		if(n == null) {
+			return null;
+		}
+		int cmp = key.compareTo(n.key);
+		if(cmp > 0) {
+			return get(n.right, key);
+		}
+		else if(cmp < 0) {
+			return get(n.left, key);
+		}
+		else {
+			return n.value;
+		}
+	}
+	public void put(K key, V value) {
+		if(key == null) {
+			throw new IllegalArgumentException("key cannot be null");
+		}
+		if(value == null) {
+			return;
+		}
+		root = put(root, key, value);
+	}
+	private Node put(Node n, K key, V value) {
+		if(n == null) {
+			return new Node(key, value, true);
+		}
+		int cmp = key.compareTo(n.key);
+		if(cmp < 0) {
+			n.left = put(n.left, key, value);
+		}
+		else if(cmp > 0) {
+			n.right = put(n.right, key, value);
+		}
+		else {
+			n.value = value;
+		}
+		if(isRed(n.right) && !isRed(n.left)) {
+			n = rotateLeft(n);
+		}
+		if(n.left == null) {
+			return n;
+		}
+		if(isRed(n.left) && isRed(n.left.left)) {
+			n = rotateRight(n);
+		}
+		if(isRed(n.left) && isRed(n.right)) {
+			n = flip(n);
+		}
+		return n;
+	}
+	public void delete(K key) {
+		if(key == null) {
+			throw new IllegalArgumentException("key cannot be null");
+		}
+		if(!isRed(root.left) && !isRed(root.right)) {
+			root.redish = true;
+		}
+		root = delete(root, key);
+		if(!isEmpty()) {
+			root.redish = false;
+		}
+	}
+	private Node moveRedLeft(Node n) {
+		assert (n!= null);
+		assert(isRed(n) && !isRed(n.left) && !isRed(n.left.left));
+		flip(n);
+		if(isRed(n.right.left)) {
+			n.right = rotateRight(n.right);
+			n = rotateLeft(n);
+			flip(n);
+		}
+		return n;
+	}
+	private Node moveRedRight(Node n) {
+		assert(n != null);
+		assert(isRed(n) && !isRed(n.right) && !isRed(n.right.left));
+		flip(n);
+		if(isRed(n.left.left)) {
+			n = rotateRight(n);
+			flip(n);
+		}
+		return n;
+	}
+	private Node deleteMin(Node n) {
+		if(n.left == null) {
+			return null;
+		}
+		if(!isRed(n.left) && !isRed(n.left.left)) {
+			n = moveRedLeft(n);
+		}
+		n.left = deleteMin(n.left);
+		return balance(n);
+	}
+	private Node delete(Node n, K key) {
+		assert(n != null);
+		int cmp = key.compareTo(n.key);
+    /** Here, we keep going left until the key is greater than the left node */
+		if(cmp < 0) {
+			if(isRed(n.left) && isRed(n.left.left)) {
+				n = moveRedLeft(n);
+			}
+			n.left = delete(n.left, key);
+		}
+    /** Where our main events happened. */
+		else {
+      /** Rotate the left red node to the right so that we can get a spindle-like tree, 
+      which reduce our work when deleting items and can be balanced by recursively rotateRight. */
+			if(isRed(n.left)) {
+				n = rotateRight(n);
+			}
+      /** After doing previous step, when n.right is null, it means we have reached the end of tree. 
+      The case a red node connecting only with a left black node at the end of the tree does not exist. */
+			if(key.compareTo(n.key) == 0 && n.right == null) {
+				return null;
+			}
+      /** This step is designed to reduce tree height like that in a 2-3 BTree and will resulting in two red lines connecting to one node, 
+      and can be restored by balancing. */
+			if(!isRed(n.right) && !isRed(n.right.left)) {
+				n = moveRedRight(n);
+			}
+      /** The normal deleting case, same as deletion in BST. 
+      i.e. when all nodes are black or only some right nodes are red, which can be recovered by balancing the tree. */
+			if(key.compareTo(n.key) == 0) {
+				Node x = min(n.right);
+				n.key = x.key;
+				n.value = x.value;
+				n.right = deleteMin(n.right);
+			}
+			else {
+				n.right = delete(n.right, key);
+			}
+		}
+		return balance(n);
+	}
+	private Node balance(Node n) {
+		if(isRed(n.right) && !isRed(n.left)) {
+			n = rotateLeft(n);
+		}
+		if(isRed(n.left) && isRed(n.left.left)) {
+			n = rotateRight(n);
+		}
+		if(isRed(n.left) && isRed(n.right)) {
+			n = flip(n);
+		}
+		return n;
+	}
+	public static void main(String[] args) {
+		LLRBTree<Integer, Integer> l = new LLRBTree<>();
+		l.put(0, 0);
+		l.put(1, 1);
+		l.put(3, 3);
+		l.put(2, 2);
+		l.put(-2, -2);
+		l.put(-1, -1);
+		l.delete(3);
+		System.out.println(l.contains(2));
+	}
+}
